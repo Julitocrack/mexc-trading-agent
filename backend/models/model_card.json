@@ -1,0 +1,369 @@
+{
+  "version": "btcusdt-lstm-1.0.0",
+  "app_version": "1.0.0",
+  "trained_at_utc": "2026-11-17T21:43:34+00:00",
+  "symbol": "BTCUSDT",
+  "interval": "1d",
+  "source": "MEXC Spot v3 /api/v3/klines (público)",
+  "exchange_info": {
+    "symbol": "BTCUSDT",
+    "base": "BTC",
+    "quote": "USDT",
+    "status": "1",
+    "qty_step": 1e-06,
+    "quote_precision": 2,
+    "taker_commission": 0.0005,
+    "maker_commission": 0.0
+  },
+  "features": [
+    "r_lag_1",
+    "r_lag_2",
+    "r_lag_3",
+    "r_lag_4",
+    "r_lag_5",
+    "r_lag_6",
+    "r_lag_7",
+    "r_lag_8",
+    "r_lag_9",
+    "r_lag_10",
+    "r_lag_11",
+    "r_lag_12",
+    "r_lag_13",
+    "r_lag_14",
+    "r_lag_15",
+    "r_lag_16",
+    "r_lag_17",
+    "r_lag_18",
+    "r_lag_19",
+    "r_lag_20"
+  ],
+  "n_lags": 20,
+  "target": "y_t = close_{t+1} / close_t - 1 (cierre diario UTC)",
+  "architecture": {
+    "type": "LSTM",
+    "hidden": 16,
+    "layers": 1,
+    "dropout": 0.2,
+    "input_shape": [
+      null,
+      20,
+      1
+    ],
+    "params": 1233
+  },
+  "training": {
+    "loss": "MSE (y estandarizado con TR)",
+    "optimizer": "Adam",
+    "lr": 0.001,
+    "batch": 64,
+    "max_epochs": 300,
+    "patience": 25,
+    "seed": 42,
+    "device": "cpu",
+    "gpu": null,
+    "nvidia_smi": null,
+    "torch": "2.15.0",
+    "sklearn": "1.9.1",
+    "python": "3.14.6"
+  },
+  "data": {
+    "raw_file": "btcusdt_1d_mexc.csv",
+    "raw_sha256": "8db9507e8cbf5142da37345b7a16cedddc7144a143441ddfb0f9b20d8207d52e",
+    "audit": {
+      "rows": 3240,
+      "first": "2018-01-01",
+      "last": "2026-11-16",
+      "gaps_gt_1d": 2,
+      "descargadas": 3241,
+      "duplicadas_eliminadas(regla: conservar última)": 0,
+      "dias_sin_vela": 2,
+      "ejemplos_dias_sin_vela": [
+        "2019-03-20",
+        "2019-05-15"
+      ],
+      "horas_apertura_distintas_de_00UTC": 234,
+      "volumen_cero": 0,
+      "nota": "Calendario continuo; no se rellenan días sin vela."
+    }
+  },
+  "splits": {
+    "TR": {
+      "n": 2253,
+      "emision": [
+        "2018-01-21",
+        "2024-03-24"
+      ],
+      "objetivo": [
+        "2018-01-22",
+        "2024-03-25"
+      ]
+    },
+    "VA": {
+      "n": 483,
+      "emision": [
+        "2024-03-25",
+        "2025-07-20"
+      ],
+      "objetivo": [
+        "2024-03-26",
+        "2025-07-21"
+      ]
+    },
+    "TE": {
+      "n": 483,
+      "emision": [
+        "2025-07-21",
+        "2026-11-15"
+      ],
+      "objetivo": [
+        "2025-07-22",
+        "2026-11-16"
+      ]
+    }
+  },
+  "selection": {
+    "busqueda": [
+      {
+        "h": 16,
+        "semilla": 42,
+        "epoca_mejor": 7,
+        "epocas": 32,
+        "tiempo_s": 1.63,
+        "TR": {
+          "MAE": 0.02413681520387043,
+          "RMSE": 0.03598907805995452,
+          "prec_direccional": 0.5130936529072347,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.018008906111255364,
+          "RMSE": 0.02508601422635957,
+          "prec_direccional": 0.515527950310559,
+          "n": 483
+        },
+        "params": 1233
+      },
+      {
+        "h": 32,
+        "semilla": 42,
+        "epoca_mejor": 1,
+        "epocas": 26,
+        "tiempo_s": 1.79,
+        "TR": {
+          "MAE": 0.02416711111878515,
+          "RMSE": 0.036038898596566143,
+          "prec_direccional": 0.511318242343542,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.018021366502886563,
+          "RMSE": 0.025086666586415767,
+          "prec_direccional": 0.5134575569358178,
+          "n": 483
+        },
+        "params": 4513
+      },
+      {
+        "h": 64,
+        "semilla": 42,
+        "epoca_mejor": 2,
+        "epocas": 27,
+        "tiempo_s": 3.43,
+        "TR": {
+          "MAE": 0.024177997377340357,
+          "RMSE": 0.03600345619943128,
+          "prec_direccional": 0.511318242343542,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.018052896080006375,
+          "RMSE": 0.02510849320116766,
+          "prec_direccional": 0.515527950310559,
+          "n": 483
+        },
+        "params": 17217
+      }
+    ],
+    "semillas": [
+      {
+        "h": 16,
+        "semilla": 42,
+        "epoca_mejor": 7,
+        "epocas": 32,
+        "tiempo_s": 1.59,
+        "TR": {
+          "MAE": 0.02413681520387043,
+          "RMSE": 0.03598907805995452,
+          "prec_direccional": 0.5130936529072347,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.018008906111255364,
+          "RMSE": 0.02508601422635957,
+          "prec_direccional": 0.515527950310559,
+          "n": 483
+        },
+        "params": 1233
+      },
+      {
+        "h": 16,
+        "semilla": 7,
+        "epoca_mejor": 5,
+        "epocas": 30,
+        "tiempo_s": 1.49,
+        "TR": {
+          "MAE": 0.024135354173159464,
+          "RMSE": 0.03599676700572272,
+          "prec_direccional": 0.5153129161118508,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.018008685830533125,
+          "RMSE": 0.0250952236071187,
+          "prec_direccional": 0.515527950310559,
+          "n": 483
+        },
+        "params": 1233
+      },
+      {
+        "h": 16,
+        "semilla": 2024,
+        "epoca_mejor": 2,
+        "epocas": 27,
+        "tiempo_s": 1.37,
+        "TR": {
+          "MAE": 0.024161245261326854,
+          "RMSE": 0.036031620904026646,
+          "prec_direccional": 0.5117620949844651,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.018023359080971694,
+          "RMSE": 0.02507932638553592,
+          "prec_direccional": 0.5175983436853002,
+          "n": 483
+        },
+        "params": 1233
+      }
+    ],
+    "rmse_va_media": 0.0250868547396714,
+    "rmse_va_desv": 7.981870738335606e-06,
+    "referencias": {
+      "cero": {
+        "TR": {
+          "MAE": 0.02416880449968536,
+          "RMSE": 0.03608845129985858,
+          "prec_direccional": null,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.018007189008032887,
+          "RMSE": 0.025118568972982938,
+          "prec_direccional": null,
+          "n": 483
+        }
+      },
+      "regresion_lineal": {
+        "TR": {
+          "MAE": 0.024143367603644227,
+          "RMSE": 0.03584487250164157,
+          "prec_direccional": 0.5241899689303151,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.01803591207470453,
+          "RMSE": 0.02507027672663113,
+          "prec_direccional": 0.5279503105590062,
+          "n": 483
+        }
+      },
+      "media_TR": {
+        "TR": {
+          "MAE": 0.024177533960664483,
+          "RMSE": 0.036056982299767,
+          "prec_direccional": 0.5104305370616955,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.018020109223786312,
+          "RMSE": 0.02508058146000035,
+          "prec_direccional": 0.5134575569358178,
+          "n": 483
+        }
+      }
+    },
+    "umbral_candidatos_VA": [
+      {
+        "delta": 0.0001,
+        "rend_neto": 0.817809819310269,
+        "max_drawdown": -0.28737272000077474,
+        "operaciones": 9,
+        "dias_en_posicion": 479
+      },
+      {
+        "delta": 0.0005,
+        "rend_neto": 0.9397333944855031,
+        "max_drawdown": -0.2628437811354206,
+        "operaciones": 37,
+        "dias_en_posicion": 464
+      },
+      {
+        "delta": 0.001,
+        "rend_neto": 0.9532283743603323,
+        "max_drawdown": -0.24808581331597812,
+        "operaciones": 145,
+        "dias_en_posicion": 391
+      },
+      {
+        "delta": 0.002,
+        "rend_neto": -0.19796022554626158,
+        "max_drawdown": -0.2661867766005698,
+        "operaciones": 106,
+        "dias_en_posicion": 68
+      },
+      {
+        "delta": 0.003,
+        "rend_neto": 0.04023040569792169,
+        "max_drawdown": 0.0,
+        "operaciones": 4,
+        "dias_en_posicion": 2
+      }
+    ]
+  },
+  "signal_threshold": 0.001,
+  "test": {
+    "LSTM": {
+      "MAE": 0.015674167182432842,
+      "RMSE": 0.02225994058642879,
+      "prec_direccional": 0.4803312629399586,
+      "n": 483
+    },
+    "cero": {
+      "MAE": 0.015547321024061084,
+      "RMSE": 0.02217471723315187,
+      "prec_direccional": null,
+      "n": 483
+    },
+    "regresion_lineal": {
+      "MAE": 0.015791919040965247,
+      "RMSE": 0.022338823043358262,
+      "prec_direccional": 0.494824016563147,
+      "n": 483
+    },
+    "estrategia_umbral": {
+      "delta": 0.001,
+      "rend_neto": -0.32785602192398955,
+      "max_drawdown": -0.503512333947548,
+      "operaciones": 148,
+      "dias_en_posicion": 399
+    },
+    "comprar_y_mantener": {
+      "rend_neto": -0.4473041787140386
+    }
+  },
+  "artifacts": {
+    "model_sha256": "9e08f87918178c6533268e7a2954a4ef169c25f1c08fccdb113ba509f9beb2ac",
+    "scaler_sha256": "48cf6ce4a5b088770902eea8911124e2ecc2bca03d91fb11cdbecbbee892b7cb"
+  },
+  "notes": "Evidencia T4: ejecutar training/train_colab.ipynb en Colab con --require-t4. Si device=cpu, este artefacto es de desarrollo y no sustituye la evidencia de T4."
+}

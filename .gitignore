@@ -1,0 +1,17 @@
+# Secretos: nunca se suben
+.env
+*.env
+!.env.example
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+# Datos y estado local
+backend/data/*.db
+backend/data/*.db-*
+backend/config/risk.json
+# Node
+node_modules/
+frontend/dist/
+.DS_Store

@@ -1,0 +1,55 @@
+
+==========================================================================================
+0) Estado inicial
+==========================================================================================
+HTTP 200 → {"symbol": "BTCUSDT", "mode": "PAPER", "live_trading_enabled": false, "agent": {"status": "RUNNING", "reason": "Iniciado por el usuario", "since": "2026-11-17T21:57:09+00:00", "cycle_seconds": 300}, "portfolio": {"run_id": "live", "cash": 50000.0, "qty": 0.0, "avg_price": 0.0, "fees": 0.0, "slippage": 0.0, "initial_cash": 50000.0, "updated_at": "2026-11-17T21:58:01+00:00", "price": 64875.64, "equity": 50000.0, "exposure": 0.0}}
+Órdenes Paper registradas: 0
+
+==========================================================================================
+1) Clave ausente o incorrecta → 401 y registro
+==========================================================================================
+HTTP 401 → {"detail": "Falta la cabecera X-API-Key"}
+HTTP 401 → {"detail": "API key incorrecta"}
+   bitácora: 2026-11-17T22:20:20+00:00 [warning] auth: API key incorrecta en /api/agent/start
+   bitácora: 2026-11-17T22:20:20+00:00 [warning] auth: Solicitud sin API key a /api/status
+
+==========================================================================================
+2) Evento duplicado: misma vela por segunda vez → no se procesa ni se opera
+==========================================================================================
+HTTP 200 → {"ok": true, "message": "Vela 2026-11-16 ya procesada: se espera la siguiente (sin duplicar)", "duplicate": true}
+   bitácora: 2026-11-17T22:20:20+00:00 [info] duplicado: Vela 2026-11-16 ya procesada: se espera la siguiente (sin duplicar)
+Órdenes Paper: 0 (antes 0)
+
+==========================================================================================
+3) Ollama detenido → mensaje útil, sin inferencia en la nube
+==========================================================================================
+HTTP 503 → {"detail": "Ollama no responde en http://127.0.0.1:11434: [Errno 61] Connection refused"}
+HTTP 503 → {"detail": "Ollama no disponible tras 3 intentos: ConnectError: Ollama no responde en http://127.0.0.1:11434"}
+Ollama reiniciado:
+HTTP 200 → {"ollama_version": "0.40.16", "model": "qwen2.5:3b", "descargado": true, "local": true}
+
+==========================================================================================
+4) Botón de detención: bloquea nuevas órdenes y conserva la posición (no liquida)
+==========================================================================================
+HTTP 200 → {"status": "STOPPED", "portfolio": {"run_id": "live", "cash": 50000.0, "qty": 0.0, "avg_price": 0.0, "fees": 0.0, "slippage": 0.0, "initial_cash": 50000.0, "updated_at": "2026-11-17T21:58:01+00:00"}}
+HTTP 200 → {"agent": {"status": "STOPPED", "reason": "Detenido por el usuario: órdenes bloqueadas, la posición se conserva", "since": "2026-11-17T22:20:29+00:00", "cycle_seconds": 300}}
+   bitácora: 2026-11-17T22:20:29+00:00 [info] estado: RUNNING → STOPPED: Detenido por el usuario: órdenes bloqueadas, la posición se conserva
+
+==========================================================================================
+5) Cambiar límites con el agente en ejecución → rechazado; detenido → validado
+==========================================================================================
+HTTP 409 → {"detail": "Pausen o detengan el agente antes de cambiar los límites de riesgo"}
+HTTP 422 → {"detail": "Configuración inválida: max_exposure_pct debe estar en (0, 1]: no se permite apalancamiento"}
+
+==========================================================================================
+6) Reinicio del backend: estado recuperado de SQLite, vuelve en PAUSA y sin duplicar
+==========================================================================================
+Antes:   efectivo=50000.00 cantidad=0.0
+Después: efectivo=50000.00 cantidad=0.0 | estado=PAUSED (Reinicio del backend: estado recuperado, reanudar manualmente)
+HTTP 200 → {"ok": true, "message": "Vela 2026-11-16 ya procesada: se espera la siguiente (sin duplicar)", "duplicate": true}
+Órdenes Paper: 0 (antes 0) → sin duplicados
+   bitácora: 2026-11-17T22:20:34+00:00 [info] duplicado: Vela 2026-11-16 ya procesada: se espera la siguiente (sin duplicar)
+   bitácora: 2026-11-17T22:20:33+00:00 [warning] estado: RUNNING → PAUSED: Reinicio del backend: estado recuperado, reanudar manualmente
+   bitácora: 2026-11-17T22:20:33+00:00 [info] reinicio: Backend iniciado; estado recuperado de SQLite
+
+Fin de la demostración.

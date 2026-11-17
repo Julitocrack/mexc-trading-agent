@@ -1,0 +1,28 @@
+tests/test_controles.py::test_sin_ventas_en_corto PASSED
+tests/test_controles.py::test_limite_de_exposicion_y_sin_apalancamiento PASSED
+tests/test_controles.py::test_perdida_diaria_maxima_bloquea PASSED
+tests/test_controles.py::test_config_de_riesgo_solo_por_api_protegida PASSED
+tests/test_controles.py::test_validacion_estricta_de_la_propuesta
+tests/test_controles.py::test_validacion_estricta_de_la_propuesta
+tests/test_controles.py::test_validacion_estricta_de_la_propuesta
+tests/test_controles.py::test_validacion_estricta_de_la_propuesta
+tests/test_controles.py::test_validacion_estricta_de_la_propuesta
+tests/test_controles.py::test_validacion_estricta_de_la_propuesta
+tests/test_controles.py::test_propuesta_valida_y_herramienta_no_permitida_rechazada PASSED
+tests/test_controles.py::test_mismas_variables_que_en_entrenamiento PASSED
+tests/test_controles.py::test_vela_abierta_no_se_usa PASSED
+tests/test_controles.py::test_ventana_insuficiente_y_desorden PASSED
+tests/test_controles.py::test_no_existe_ruta_de_ordenes_reales PASSED
+tests/test_controles.py::test_replay_y_metricas PASSED
+tests/test_errores.py::test_1_mexc_rate_limit_reintenta_con_espera_creciente PASSED
+tests/test_errores.py::test_1_mexc_sin_respuesta_pausa_al_agente PASSED
+tests/test_errores.py::test_2_dato_atrasado_no_opera PASSED
+tests/test_errores.py::test_3_ollama_detenido PASSED
+tests/test_errores.py::test_4_json_invalido_se_rechaza PASSED
+tests/test_errores.py::test_5_api_key_ausente_o_incorrecta PASSED
+tests/test_errores.py::test_5_sin_api_key_configurada_no_arranca PASSED
+tests/test_errores.py::test_6_saldo_insuficiente PASSED
+tests/test_errores.py::test_7_vela_duplicada_no_se_procesa_dos_veces PASSED
+tests/test_errores.py::test_8_reinicio_recupera_estado_sin_duplicar PASSED
+tests/test_errores.py::test_9_detener_bloquea_ordenes_y_conserva_posicion PASSED
+======================== 27 passed, 1 warning in 1.21s =========================
