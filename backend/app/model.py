@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import warnings
 from pathlib import Path
 
 import torch  # se importa antes que sklearn para evitar conflictos de OpenMP en macOS
@@ -72,8 +73,19 @@ class Predictor:
         self.net = build(self.tipo, self.h)
         self.net.load_state_dict(torch.load(self.dir / "model.pt", map_location="cpu", weights_only=True))
         self.net.eval()
-        sc = joblib.load(self.dir / "scaler.joblib")
+        with warnings.catch_warnings(record=True) as avisos:
+            warnings.simplefilter("always")
+            sc = joblib.load(self.dir / "scaler.joblib")
         self.esc_x, self.y_mean, self.y_std = sc["esc_x"], float(sc["y_mean"]), float(sc["y_std"])
+        # El escalador pudo guardarse con otra versión de scikit-learn (p. ej. Colab). Un StandardScaler solo
+        # contiene media y escala: se verifica que transform() sea exactamente (x − media) / escala.
+        mean, scale = np.asarray(self.esc_x.mean_, float), np.asarray(self.esc_x.scale_, float)
+        if mean.shape != (N_LAGS,) or scale.shape != (N_LAGS,) or not (np.isfinite(mean).all() and (scale > 0).all()):
+            raise ValueError("Escalador inválido: media/escala con forma o valores incorrectos")
+        prueba = np.linspace(-0.05, 0.05, 2 * N_LAGS).reshape(2, N_LAGS)
+        if not np.allclose(self.esc_x.transform(prueba), (prueba - mean) / scale):
+            raise ValueError("El escalador no reproduce (x − media) / escala; reentrenen con la versión actual")
+        self.scaler_version_warning = [str(a.message)[:160] for a in avisos]
         self.version = self.card.get("version", "desconocida")
 
     def predict(self, lags: np.ndarray) -> float:

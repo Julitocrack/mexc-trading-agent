@@ -1,5 +1,5 @@
 {
-  "tag": "20261117T215140",
+  "tag": "20261117T224729",
   "start": "2025-07-21",
   "end": "2026-11-15",
   "limit": null,
@@ -33,10 +33,10 @@
       "embedding_length": 2048,
       "runner": "ggml"
     },
-    "en_memoria": true,
-    "vram_bytes": 2095725935,
+    "en_memoria": false,
+    "vram_bytes": null,
     "url": "http://127.0.0.1:11434",
     "local": true
   },
-  "duration_s": 1688.022487
+  "duration_s": 1947.769005
 }

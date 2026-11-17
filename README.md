@@ -1,4 +1,4 @@
-# MEXC Paper Trading Agent · v1.0.0
+# MEXC Paper Trading Agent · v1.0.1
 
 Agente de trading **en modo Paper (dinero simulado)** para **BTCUSDT** que combina:
 
@@ -17,8 +17,8 @@ Agente de trading **en modo Paper (dinero simulado)** para **BTCUSDT** que combi
 
 | Componente | Tecnología | Versión |
 |---|---|---|
-| Aplicación | MEXC Paper Trading Agent | **1.0.0** |
-| Modelo predictivo | LSTM (PyTorch), artefacto `btcusdt-lstm-1.0.0` | torch 2.15.0 |
+| Aplicación | MEXC Paper Trading Agent | **1.0.1** |
+| Modelo predictivo | LSTM (PyTorch), artefacto `btcusdt-lstm-1.0.0` **entrenado en NVIDIA Tesla T4 (Google Colab)** | torch 2.14.1+cu130 (entrenamiento) · 2.15.0 (inferencia local) |
 | LLM local | Ollama + `qwen2.5:3b` (3.1B parámetros, Q4_K_M, 1.9 GB) | Ollama 0.40.16 |
 | Backend | Python + FastAPI + Uvicorn | Python 3.14 · FastAPI 0.163.2 · Uvicorn 0.54.0 |
 | Datos y ML | pandas · NumPy · scikit-learn · joblib | 3.1.1 · 2.5.5 · 1.9.1 · 1.6.0 |
@@ -27,7 +27,7 @@ Agente de trading **en modo Paper (dinero simulado)** para **BTCUSDT** que combi
 | UI | **Vue 3 + Vite + TypeScript** | Vue 3.5.45 · Vite 8.3.8 · TypeScript 6.0.3 · vue-tsc 3.3.14 |
 | Datos de mercado | MEXC Spot API v3 (endpoints públicos `klines`, `ticker/price`, `exchangeInfo`) | v3 |
 | Pruebas | pytest | 9.2.0 |
-| Entrenamiento con evidencia de GPU | Google Colab + NVIDIA T4 (`backend/training/train_colab.ipynb`) | — |
+| Entrenamiento con evidencia de GPU | Google Colab + NVIDIA Tesla T4 (`backend/training/train_colab.ipynb`) | CUDA 13.0 · driver 580.82.07 |
 
 Desarrollado y probado en macOS (Apple M5, 16 GB RAM) con Node 24.
 
@@ -171,17 +171,18 @@ Metodología de la práctica adaptada de AAPL a **BTCUSDT** (protocolo, sección
 - **Datos:** 3,240 velas diarias cerradas de MEXC (2018-01-01 → 2026-11-16), CSV original con huella SHA-256 en la ficha. Auditoría: 0 duplicados, 2 días sin vela en 2019 (no se rellenan), 234 velas antiguas con apertura distinta de 00:00 UTC (documentadas).
 - **Objetivo:** $y_t = P_{t+1}/P_t - 1$; entradas: 20 rendimientos rezagados. Escalador ajustado **solo con TR**.
 - **Particiones por fecha objetivo:** TR 2,253 (2018-01 → 2024-03) · VA 483 (2024-03 → 2025-07) · TE 483 (2025-07 → 2026-11).
-- **Selección con VA:** LSTM con 16, 32 y 64 neuronas; gana **h = 16** (1,233 parámetros), repetida con 3 semillas (RMSE VA 2.5087% ± 0.0008 pp).
+- **Entrenamiento en GPU T4** (Colab, `--require-t4`): dispositivo `cuda`, `Tesla T4`, semilla 42; la salida de `nvidia-smi` queda guardada en la ficha del modelo.
+- **Selección con VA:** LSTM con 16, 32 y 64 neuronas; gana **h = 32** (4,513 parámetros), repetida con 3 semillas (RMSE VA 2.5095% ± 0.0011 pp).
 
 | RMSE | VA | TE (una sola evaluación) |
 |---|---|---|
 | Pronóstico cero | 2.5119% | 2.2175% |
 | Regresión lineal | 2.5070% | 2.2339% |
-| **LSTM h=16** | 2.5087% | 2.2260% |
+| **LSTM h=32** | 2.5087% | 2.2282% |
 
-**Interpretación honesta:** igual que en la práctica con AAPL, la LSTM **no supera de forma robusta** al pronóstico cero. Sus predicciones son casi constantes y cercanas al rendimiento medio. En TE queda 0.4% peor que pronosticar cero. El umbral δ = 0.10% se eligió en VA entre cinco candidatos. En TE la regla δ perdió −32.8%, mientras que comprar y mantener perdió −44.7%, porque BTC cayó en ese periodo.
+**Interpretación honesta:** igual que en la práctica con AAPL, la LSTM **no supera de forma robusta** al pronóstico cero. Sus predicciones son casi constantes y cercanas al rendimiento medio. En TE queda 0.5% peor que pronosticar cero. El umbral δ = 0.10% se eligió en VA entre cinco candidatos. En el cálculo simple del entrenamiento (sin deslizamiento), la regla δ perdió −39.6% en TE, mientras que comprar y mantener perdió −44.7%, porque BTC cayó en ese periodo.
 
-La ficha completa está en `backend/models/model_card.json`: arquitectura, hiperparámetros, dispositivo, versiones, auditoría, métricas, candidatos de δ y huellas SHA-256.
+La ficha completa está en `backend/models/model_card.json`: arquitectura, hiperparámetros, dispositivo (`cuda`, `Tesla T4`), salida de `nvidia-smi`, versiones, auditoría, métricas, candidatos de δ y huellas SHA-256. El backend verifica la huella del modelo y el contrato de variables al cargarlo. El escalador se guardó con scikit-learn 1.6.1 (Colab); al cargarlo con otra versión se comprueba numéricamente que `transform(x) = (x − media) / escala`.
 
 ---
 
@@ -209,13 +210,14 @@ La salida de las 27 pruebas está en [`docs/evidencia/pruebas_pytest.txt`](docs/
 
 | Estrategia | Rend. neto | Máx. drawdown | Compras / ventas | Win Rate | Costos (USDT) | Acciones rechazadas | Latencia LLM |
 |---|---|---|---|---|---|---|---|
-| Agente con LLM local (`qwen2.5:3b`) | **−35.86%** | −50.62% | 74 / 74 | 48.6% | 2,608.03 | 0 | mediana 3.6 s · p95 4.9 s |
-| Modelo sin LLM (regla δ = 0.10%) | **−35.86%** | −50.62% | 74 / 74 | 48.6% | 2,608.03 | 0 | — |
+| Agente con LLM local (`qwen2.5:3b`) | **−38.45%** | −47.51% | 8 / 8 | 12.5% | 286.71 | 0 | mediana 3.9 s · p95 5.1 s |
+| Modelo sin LLM (regla δ = 0.10%) | **−38.45%** | −47.51% | 8 / 8 | 12.5% | 286.71 | 0 | — |
 | Comprar y mantener | **−42.55%** | −50.46% | 1 / 0 | no definido (sin operaciones cerradas) | 23.74 | 0 | — |
 
 **Interpretación:**
-- BTC cayó con fuerza en el periodo de prueba. Ambas estrategias activas perdieron menos que comprar y mantener (−35.9% contra −42.6%), pero **ninguna tuvo rentabilidad positiva**. El drawdown máximo fue prácticamente el mismo.
-- **El LLM no aportó valor medible:** en las 482 velas eligió la misma acción que la regla del modelo (0 diferencias), no usó herramientas y no tuvo propuestas rechazadas. En la práctica actuó como un "traductor" de la señal LSTM, con justificación en lenguaje natural, a cambio de unos 3.6 s de latencia por decisión.
+- Modelo evaluado: el artefacto **entrenado en la T4** (LSTM h=32).
+- BTC cayó con fuerza en el periodo de prueba. Las estrategias activas perdieron menos que comprar y mantener (−38.5% contra −42.6%) y tuvieron un drawdown algo menor (−47.5% contra −50.5%), pero **ninguna tuvo rentabilidad positiva**. Con este modelo, la regla casi siempre estuvo invertida: hizo solo 8 operaciones cerradas y ganó 1 de 8.
+- **El LLM no aportó valor medible:** en las 482 velas eligió la misma acción que la regla del modelo (0 diferencias), no usó herramientas y no tuvo propuestas rechazadas. En la práctica actuó como un "traductor" de la señal LSTM, con justificación en lenguaje natural, a cambio de unos 3.9 s de latencia por decisión.
 - El protocolo pide evaluar si el LLM aporta valor y no exige que lo mejore. Este resultado indica que, con este modelo predictivo, la ventaja tendría que venir de mejores variables o de un LLM con información adicional, no del LLM por sí solo.
 
 Archivos: [`docs/evaluacion/EVALUACION.md`](docs/evaluacion/EVALUACION.md), `resultados.csv`, y `decisiones_*.csv` / `ordenes_*.csv` por estrategia (cada decisión incluye la justificación del LLM y su latencia).
@@ -228,7 +230,7 @@ Archivos: [`docs/evaluacion/EVALUACION.md`](docs/evaluacion/EVALUACION.md), `res
 1. **No conecten dinero real.** El proyecto es solo Paper. Antes de cualquier uso real harían falta firmas de órdenes, gestión de claves con permisos mínimos, auditoría de seguridad y una prueba fuera de muestra nueva.
 2. **Mantengan el LLM local:** Ollama solo en `127.0.0.1`, sin exponer el puerto 11434 a la red. Todo acceso pasa por el backend con API key.
 3. **Roten la `API_KEY`** si se comparte la pantalla o el archivo `.env`, y nunca la pongan en variables `VITE_` ni en el código de la UI.
-4. **Entrenen en Colab con T4** (`train_colab.ipynb`) para conservar la evidencia de GPU, y reemplacen los artefactos de `backend/models/` solo si la ficha y la huella SHA-256 coinciden.
+4. **Reentrenen siempre en Colab con T4** (`train_colab.ipynb`), como se hizo con el artefacto incluido, y reemplacen los archivos de `backend/models/` solo si la ficha y la huella SHA-256 coinciden.
 5. **No aceleren la frecuencia** para "ver más ciclos" en vivo: el modelo es diario. Para demostraciones usen el replay, que queda identificado como tal.
 6. Revisen la **bitácora de eventos** en la UI después de cada pausa automática antes de reanudar.
 
@@ -243,7 +245,6 @@ Archivos: [`docs/evaluacion/EVALUACION.md`](docs/evaluacion/EVALUACION.md), `res
 ## Limitaciones conocidas
 
 - La LSTM no supera de forma robusta al pronóstico cero (ver sección *Modelo predictivo*); la evaluación lo reporta tal cual.
-- El artefacto incluido se entrenó en **CPU** (`"device": "cpu"` en la ficha). **Pendiente:** reentrenar con `train_colab.ipynb` en una T4 para la evidencia de GPU.
 - Con frecuencia diaria, 20 ciclos en vivo tardan 20 días. Los ciclos de la evaluación son de **replay** y están identificados como tales, separados del modo en vivo.
 - Un LLM de 3B parámetros a veces simplifica su justificación. La decisión final siempre pasa por la validación y por el motor de riesgo.
 
@@ -262,6 +263,13 @@ frontend/         Vue 3 + Vite + TypeScript (src/App.vue, components/, api.ts)
 scripts/          run_backend.sh · run_frontend.sh · evaluate.py
 docs/             evaluacion/ (resultados y decisiones) · evidencia/
 ```
+
+## Historial de versiones
+
+| Versión | Cambios |
+|---|---|
+| **1.0.1** | Modelo reentrenado en **NVIDIA Tesla T4 (Google Colab)** con `train_colab.ipynb` (LSTM h=32) y CSV de entrenamiento con huella verificada; el escalador se valida numéricamente al cargarse con otra versión de scikit-learn; evaluación de las tres estrategias repetida con el modelo de la T4. |
+| 1.0.0 | Primera entrega: backend FastAPI autenticado, LLM local con Ollama, motor de riesgo, simulador Paper, UI Vue 3 + Vite + TypeScript, 27 pruebas y evaluación por replay. |
 
 ## Licencia
 

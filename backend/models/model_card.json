@@ -1,7 +1,7 @@
 {
   "version": "btcusdt-lstm-1.0.0",
   "app_version": "1.0.0",
-  "trained_at_utc": "2026-11-17T21:43:34+00:00",
+  "trained_at_utc": "2026-11-17T22:43:14+00:00",
   "symbol": "BTCUSDT",
   "interval": "1d",
   "source": "MEXC Spot v3 /api/v3/klines (público)",
@@ -41,7 +41,7 @@
   "target": "y_t = close_{t+1} / close_t - 1 (cierre diario UTC)",
   "architecture": {
     "type": "LSTM",
-    "hidden": 16,
+    "hidden": 32,
     "layers": 1,
     "dropout": 0.2,
     "input_shape": [
@@ -49,7 +49,7 @@
       20,
       1
     ],
-    "params": 1233
+    "params": 4513
   },
   "training": {
     "loss": "MSE (y estandarizado con TR)",
@@ -59,16 +59,16 @@
     "max_epochs": 300,
     "patience": 25,
     "seed": 42,
-    "device": "cpu",
-    "gpu": null,
-    "nvidia_smi": null,
-    "torch": "2.15.0",
-    "sklearn": "1.9.1",
-    "python": "3.14.6"
+    "device": "cuda",
+    "gpu": "Tesla T4",
+    "nvidia_smi": "Tue Nov 17 22:42:49 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.82.07              Driver Version: 580.82.07      CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |\n| N/A   68C    P0             32W /   70W |     137MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|    0   N/A  N/A            3503      C   /usr/bin/python3                        134MiB |\n+-----------------------------------------------------------------------------------------+\n",
+    "torch": "2.14.1+cu130",
+    "sklearn": "1.6.1",
+    "python": "3.13.16"
   },
   "data": {
     "raw_file": "btcusdt_1d_mexc.csv",
-    "raw_sha256": "8db9507e8cbf5142da37345b7a16cedddc7144a143441ddfb0f9b20d8207d52e",
+    "raw_sha256": "f3ec0b03b81ff188f4decbd0852bb11840b9ec80114d6b990725343fc9bf766a",
     "audit": {
       "rows": 3240,
       "first": "2018-01-01",
@@ -126,18 +126,18 @@
       {
         "h": 16,
         "semilla": 42,
-        "epoca_mejor": 7,
-        "epocas": 32,
-        "tiempo_s": 1.63,
+        "epoca_mejor": 6,
+        "epocas": 31,
+        "tiempo_s": 3.38,
         "TR": {
-          "MAE": 0.02413681520387043,
-          "RMSE": 0.03598907805995452,
-          "prec_direccional": 0.5130936529072347,
+          "MAE": 0.02414481995067835,
+          "RMSE": 0.03599744481243019,
+          "prec_direccional": 0.5139813581890812,
           "n": 2253
         },
         "VA": {
-          "MAE": 0.018008906111255364,
-          "RMSE": 0.02508601422635957,
+          "MAE": 0.018014505815255683,
+          "RMSE": 0.02508760801541285,
           "prec_direccional": 0.515527950310559,
           "n": 483
         },
@@ -148,16 +148,16 @@
         "semilla": 42,
         "epoca_mejor": 1,
         "epocas": 26,
-        "tiempo_s": 1.79,
+        "tiempo_s": 2.07,
         "TR": {
-          "MAE": 0.02416711111878515,
-          "RMSE": 0.036038898596566143,
-          "prec_direccional": 0.511318242343542,
+          "MAE": 0.024170636571121926,
+          "RMSE": 0.03604004078270322,
+          "prec_direccional": 0.5108743897026188,
           "n": 2253
         },
         "VA": {
-          "MAE": 0.018021366502886563,
-          "RMSE": 0.025086666586415767,
+          "MAE": 0.01802475950191809,
+          "RMSE": 0.02508695083215249,
           "prec_direccional": 0.5134575569358178,
           "n": 483
         },
@@ -168,17 +168,17 @@
         "semilla": 42,
         "epoca_mejor": 2,
         "epocas": 27,
-        "tiempo_s": 3.43,
+        "tiempo_s": 2.76,
         "TR": {
-          "MAE": 0.024177997377340357,
-          "RMSE": 0.03600345619943128,
-          "prec_direccional": 0.511318242343542,
+          "MAE": 0.024174292971211944,
+          "RMSE": 0.036003079353939385,
+          "prec_direccional": 0.513537505548158,
           "n": 2253
         },
         "VA": {
-          "MAE": 0.018052896080006375,
-          "RMSE": 0.02510849320116766,
-          "prec_direccional": 0.515527950310559,
+          "MAE": 0.01804884105222678,
+          "RMSE": 0.02510461490330215,
+          "prec_direccional": 0.5134575569358178,
           "n": 483
         },
         "params": 17217
@@ -186,68 +186,68 @@
     ],
     "semillas": [
       {
-        "h": 16,
+        "h": 32,
         "semilla": 42,
-        "epoca_mejor": 7,
-        "epocas": 32,
-        "tiempo_s": 1.59,
+        "epoca_mejor": 1,
+        "epocas": 26,
+        "tiempo_s": 2.51,
         "TR": {
-          "MAE": 0.02413681520387043,
-          "RMSE": 0.03598907805995452,
-          "prec_direccional": 0.5130936529072347,
+          "MAE": 0.024170636571121926,
+          "RMSE": 0.03604004078270322,
+          "prec_direccional": 0.5108743897026188,
           "n": 2253
         },
         "VA": {
-          "MAE": 0.018008906111255364,
-          "RMSE": 0.02508601422635957,
-          "prec_direccional": 0.515527950310559,
+          "MAE": 0.01802475950191809,
+          "RMSE": 0.02508695083215249,
+          "prec_direccional": 0.5134575569358178,
           "n": 483
         },
-        "params": 1233
+        "params": 4513
       },
       {
-        "h": 16,
+        "h": 32,
         "semilla": 7,
-        "epoca_mejor": 5,
-        "epocas": 30,
-        "tiempo_s": 1.49,
-        "TR": {
-          "MAE": 0.024135354173159464,
-          "RMSE": 0.03599676700572272,
-          "prec_direccional": 0.5153129161118508,
-          "n": 2253
-        },
-        "VA": {
-          "MAE": 0.018008685830533125,
-          "RMSE": 0.0250952236071187,
-          "prec_direccional": 0.515527950310559,
-          "n": 483
-        },
-        "params": 1233
-      },
-      {
-        "h": 16,
-        "semilla": 2024,
         "epoca_mejor": 2,
         "epocas": 27,
-        "tiempo_s": 1.37,
+        "tiempo_s": 2.18,
         "TR": {
-          "MAE": 0.024161245261326854,
-          "RMSE": 0.036031620904026646,
-          "prec_direccional": 0.5117620949844651,
+          "MAE": 0.02416691450553461,
+          "RMSE": 0.03603067864266136,
+          "prec_direccional": 0.5099866844207723,
           "n": 2253
         },
         "VA": {
-          "MAE": 0.018023359080971694,
-          "RMSE": 0.02507932638553592,
-          "prec_direccional": 0.5175983436853002,
+          "MAE": 0.01802746742136527,
+          "RMSE": 0.025089535970964253,
+          "prec_direccional": 0.5134575569358178,
           "n": 483
         },
-        "params": 1233
+        "params": 4513
+      },
+      {
+        "h": 32,
+        "semilla": 2024,
+        "epoca_mejor": 6,
+        "epocas": 31,
+        "tiempo_s": 2.56,
+        "TR": {
+          "MAE": 0.024145217999702474,
+          "RMSE": 0.03597436990996666,
+          "prec_direccional": 0.5170883266755437,
+          "n": 2253
+        },
+        "VA": {
+          "MAE": 0.01803494838831881,
+          "RMSE": 0.025107947062858123,
+          "prec_direccional": 0.5217391304347826,
+          "n": 483
+        },
+        "params": 4513
       }
     ],
-    "rmse_va_media": 0.0250868547396714,
-    "rmse_va_desv": 7.981870738335606e-06,
+    "rmse_va_media": 0.02509481128865829,
+    "rmse_va_desv": 1.1449111692214627e-05,
     "referencias": {
       "cero": {
         "TR": {
@@ -295,47 +295,47 @@
     "umbral_candidatos_VA": [
       {
         "delta": 0.0001,
-        "rend_neto": 0.817809819310269,
-        "max_drawdown": -0.28737272000077474,
-        "operaciones": 9,
-        "dias_en_posicion": 479
+        "rend_neto": 0.6797412651368406,
+        "max_drawdown": -0.2809528618811714,
+        "operaciones": 1,
+        "dias_en_posicion": 483
       },
       {
         "delta": 0.0005,
-        "rend_neto": 0.9397333944855031,
-        "max_drawdown": -0.2628437811354206,
-        "operaciones": 37,
-        "dias_en_posicion": 464
+        "rend_neto": 0.6797412651368406,
+        "max_drawdown": -0.2809528618811714,
+        "operaciones": 1,
+        "dias_en_posicion": 483
       },
       {
         "delta": 0.001,
-        "rend_neto": 0.9532283743603323,
-        "max_drawdown": -0.24808581331597812,
-        "operaciones": 145,
-        "dias_en_posicion": 391
+        "rend_neto": 0.7484976310338318,
+        "max_drawdown": -0.29860035466727675,
+        "operaciones": 17,
+        "dias_en_posicion": 473
       },
       {
         "delta": 0.002,
-        "rend_neto": -0.19796022554626158,
-        "max_drawdown": -0.2661867766005698,
-        "operaciones": 106,
-        "dias_en_posicion": 68
+        "rend_neto": 0.03501989323495858,
+        "max_drawdown": -0.03387289875983679,
+        "operaciones": 2,
+        "dias_en_posicion": 3
       },
       {
         "delta": 0.003,
-        "rend_neto": 0.04023040569792169,
+        "rend_neto": 0.0,
         "max_drawdown": 0.0,
-        "operaciones": 4,
-        "dias_en_posicion": 2
+        "operaciones": 0,
+        "dias_en_posicion": 0
       }
     ]
   },
   "signal_threshold": 0.001,
   "test": {
     "LSTM": {
-      "MAE": 0.015674167182432842,
-      "RMSE": 0.02225994058642879,
-      "prec_direccional": 0.4803312629399586,
+      "MAE": 0.01567715756112255,
+      "RMSE": 0.02228230215704782,
+      "prec_direccional": 0.47619047619047616,
       "n": 483
     },
     "cero": {
@@ -352,18 +352,18 @@
     },
     "estrategia_umbral": {
       "delta": 0.001,
-      "rend_neto": -0.32785602192398955,
-      "max_drawdown": -0.503512333947548,
-      "operaciones": 148,
-      "dias_en_posicion": 399
+      "rend_neto": -0.39631588130605266,
+      "max_drawdown": -0.4899661583724958,
+      "operaciones": 16,
+      "dias_en_posicion": 473
     },
     "comprar_y_mantener": {
       "rend_neto": -0.4473041787140386
     }
   },
   "artifacts": {
-    "model_sha256": "9e08f87918178c6533268e7a2954a4ef169c25f1c08fccdb113ba509f9beb2ac",
-    "scaler_sha256": "48cf6ce4a5b088770902eea8911124e2ecc2bca03d91fb11cdbecbbee892b7cb"
+    "model_sha256": "0dcb3c03a605cafa931c0287bfa77aa94dc49500b532c8c4896b2dad6d38d058",
+    "scaler_sha256": "935160a8166f850ebdc2fe03375fd99475f74ca6a1ec2ded68a6b37acabf0919"
   },
   "notes": "Evidencia T4: ejecutar training/train_colab.ipynb en Colab con --require-t4. Si device=cpu, este artefacto es de desarrollo y no sustituye la evidencia de T4."
 }
