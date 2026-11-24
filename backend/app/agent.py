@@ -29,6 +29,7 @@ from .store import DuplicateCandle, Store
 LIVE = "live"
 STATUSES = ("STOPPED", "RUNNING", "PAUSED", "HALTED")
 STRATEGIES = ("agent_llm", "model_only", "buy_hold")
+VENTANA_REPLAY = 260  # velas de contexto por decisión en replay (alcanza para SMA200)
 
 
 def _pct(x):
@@ -37,9 +38,13 @@ def _pct(x):
 
 class Agent:
     def __init__(self, settings: Settings, store: Store, mexc: MexcClient, llm: OllamaClient,
-                 predictor: Predictor, risk_cfg: RiskConfig, clock=utcnow):
+                 predictor: Predictor, risk_cfg: RiskConfig, clock=utcnow, strategy: dict | None = None):
         self.s, self.store, self.mexc, self.llm, self.pred = settings, store, mexc, llm, predictor
         self.risk_cfg, self.clock = risk_cfg, clock
+        # Regla de señal (capítulo 11). Sin tarjeta de estrategia = regla v1: solo pronóstico > δ.
+        self.strategy = strategy or {"version": "regla-v1", "regla": {"delta": risk_cfg.signal_threshold, "sma": None,
+                                                                       "vol_umbral": None}}
+        self.regla = self.strategy["regla"]
         self._cycle_lock = threading.Lock()
         self.store.ensure_run(LIVE, "live", "agent_llm", risk_cfg.initial_capital,
                               {"symbol": settings.symbol, "interval": settings.interval})
@@ -101,25 +106,52 @@ class Agent:
         lags = lag_vector(closes)
         forecast = self.pred.predict(lags)
         last = candles.iloc[-1]
+        ind = indicators(closes)
+        w = self.regla.get("sma")
+        if w:
+            if len(closes) < w:
+                raise CandleValidationError(f"Ventana insuficiente para SMA{w}: se recibieron {len(closes)} velas")
+            sma_w = float(closes[-w:].mean())
+            ind[f"sma{w}"], ind[f"dist_sma{w}"] = sma_w, float(closes[-1] / sma_w - 1)
         return {"symbol": self.s.symbol, "interval": self.s.interval, "candle_time": last["candle_date"],
                 "close": float(last["close"]), "forecast": forecast, "lags": lags,
-                "indicators": indicators(closes), "data_age_hours": info.get("data_age_hours", 0.0),
+                "indicators": ind, "data_age_hours": info.get("data_age_hours", 0.0),
                 "recent": [{"fecha": d, "cierre": round(float(c), 2)}
                            for d, c in zip(candles["candle_date"].iloc[-30:], candles["close"].iloc[-30:])],
                 "validation": info}
 
+    # ================================================================== señal de la estrategia
+    def senal(self, snap: dict) -> tuple[bool, list[str]]:
+        """Comprado si se cumplen TODAS las condiciones activas de la regla; devuelve (comprar, motivos)."""
+        motivos, ok = [], True
+        d = self.regla.get("delta")
+        if d is not None:
+            c = snap["forecast"] > d
+            ok &= c
+            motivos.append(f"pronóstico {snap['forecast']:+.3%} {'>' if c else '≤'} δ {d:.3%}")
+        w = self.regla.get("sma")
+        if w:
+            c = snap["close"] > snap["indicators"][f"sma{w}"]
+            ok &= c
+            motivos.append(f"precio {'>' if c else '≤'} SMA{w} ({snap['indicators'][f'dist_sma{w}']:+.2%})")
+        v = self.regla.get("vol_umbral")
+        if v is not None and snap["indicators"]["vol20"] is not None:
+            c = snap["indicators"]["vol20"] < v
+            ok &= c
+            motivos.append(f"volatilidad20 {snap['indicators']['vol20']:.2%} {'<' if c else '≥'} {v:.2%}")
+        return bool(ok), motivos
+
     # ================================================================== pasos 3 y 4
     def propose(self, strategy: str, snap: dict, p: dict) -> dict:
-        delta = self.risk_cfg.signal_threshold
+        delta = self.regla.get("delta") if self.regla.get("delta") is not None else self.risk_cfg.signal_threshold
+        comprar, motivos = self.senal(snap)
         en_pos = p["qty"] > 0
         allowed = ["HOLD", "SELL"] if en_pos else ["BUY", "HOLD"]
         if strategy == "buy_hold":
             return {"proposed_action": "HOLD" if en_pos else "BUY", "justification": "Comprar y mantener (referencia pasiva)"}
         if strategy == "model_only":
-            arriba = snap["forecast"] > delta
-            accion = ("HOLD" if en_pos else "BUY") if arriba else ("SELL" if en_pos else "HOLD")
-            return {"proposed_action": accion,
-                    "justification": f"Regla sin LLM: pronóstico {snap['forecast']:+.4%} {'>' if arriba else '≤'} δ={delta:.4%}"}
+            accion = ("HOLD" if en_pos else "BUY") if comprar else ("SELL" if en_pos else "HOLD")
+            return {"proposed_action": accion, "justification": "Regla sin LLM: " + "; ".join(motivos)}
         # agent_llm
         precio = snap["close"]
         datos = {
@@ -127,9 +159,14 @@ class Agent:
             "close": round(precio, 2),
             "pronostico_rendimiento_siguiente": f"{100 * snap['forecast']:+.3f}%",
             "umbral_senal": f"{100 * delta:.3f}%",
-            "senal_modelo": "COMPRAR/MANTENER" if snap["forecast"] > delta else "EFECTIVO/VENDER",
-            "nota_modelo": "Pronóstico LSTM del rendimiento de la próxima vela diaria; su error típico (RMSE) ≈ 2.5 puntos porcentuales.",
-            "indicadores": {"distancia_sma20": _pct(snap["indicators"]["dist_sma20"]),
+            "senal_estrategia": "COMPRAR/MANTENER" if comprar else "EFECTIVO/VENDER",
+            "condiciones_senal": motivos,
+            "nota_modelo": ("Pronóstico LSTM del rendimiento de la próxima vela diaria; su error típico (RMSE) ≈ 2.5 puntos "
+                            "porcentuales. La señal de la estrategia exige TODAS las condiciones; el filtro de tendencia "
+                            "evita estar comprado cuando el precio está bajo su promedio."),
+            "indicadores": {**({f"distancia_sma{self.regla['sma']}": _pct(snap["indicators"][f"dist_sma{self.regla['sma']}"])}
+                               if self.regla.get("sma") else {}),
+                            "distancia_sma20": _pct(snap["indicators"]["dist_sma20"]),
                             "volatilidad20": _pct(snap["indicators"]["vol20"]),
                             "rsi14": None if snap["indicators"]["rsi14"] is None else round(snap["indicators"]["rsi14"], 1)},
             "rendimientos_recientes": [f"{100 * float(x):+.2f}%" for x in snap["lags"][:5]],
@@ -206,7 +243,7 @@ class Agent:
                 return {"ok": False, "message": f"Agente en {estado}: no se toman decisiones"}
             now = self.clock()
             try:
-                velas = self.mexc.closed_klines(self.s.symbol, self.s.interval, limit=120, now=now)
+                velas = self.mexc.closed_klines(self.s.symbol, self.s.interval, limit=300, now=now)
                 snap = self.snapshot(velas, now, self.risk_cfg.max_data_age_hours)
                 if self.store.is_processed(LIVE, snap["candle_time"]):
                     msg = f"Vela {snap['candle_time']} ya procesada: se espera la siguiente (sin duplicar)"
@@ -244,7 +281,7 @@ class Agent:
             if s not in STRATEGIES:
                 raise ValueError(f"Estrategia desconocida: {s}")
         ini, fin = datetime.fromisoformat(start).replace(tzinfo=timezone.utc), datetime.fromisoformat(end).replace(tzinfo=timezone.utc)
-        hist = self.mexc.history(self.s.symbol, self.s.interval, ini - timedelta(days=60), fin + timedelta(days=2))
+        hist = self.mexc.history(self.s.symbol, self.s.interval, ini - timedelta(days=VENTANA_REPLAY + 10), fin + timedelta(days=2))
         hist = hist[hist["close_time"] <= self.clock()].drop_duplicates("candle_date", keep="last").reset_index(drop=True)
         idx = [i for i in range(MIN_CANDLES - 1, len(hist) - 1) if start <= hist.loc[i, "candle_date"] <= end]
         if limit:
@@ -262,7 +299,7 @@ class Agent:
                              f"{hist.loc[idx[-1],'candle_date']} | estrategias {strategies}")
         errores = 0
         for k, i in enumerate(idx):
-            ventana = hist.iloc[max(0, i - 59): i + 1].reset_index(drop=True)
+            ventana = hist.iloc[max(0, i - VENTANA_REPLAY + 1): i + 1].reset_index(drop=True)
             snap = self.snapshot(ventana, now=ventana["close_time"].iloc[-1], max_age_hours=None)
             siguiente = hist.iloc[i + 1]
             for s, rid in runs.items():

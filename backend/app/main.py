@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import json
 import platform
 import subprocess
 from contextlib import asynccontextmanager
@@ -62,8 +63,14 @@ def create_app(settings: Settings | None = None, *, mexc: MexcClient | None = No
     if not s.risk_path.exists():  # primera ejecución: δ = umbral elegido en VA durante el entrenamiento
         RiskConfig(signal_threshold=float(predictor.card.get("signal_threshold", 0.0005))).validate().save(s.risk_path)
     risk_cfg = RiskConfig.load(s.risk_path)
+    ruta_est = s.model_dir / "strategy_card.json"
+    estrategia = json.loads(ruta_est.read_text()) if ruta_est.exists() else None
+    if estrategia and estrategia.get("modelo") != predictor.version:
+        raise RuntimeError("strategy_card.json se seleccionó con otro modelo; vuelvan a correr training.select_strategy")
+    if estrategia and estrategia["regla"].get("delta") is not None:
+        risk_cfg.signal_threshold = float(estrategia["regla"]["delta"])
     agent = Agent(s, store, mexc or MexcClient(s.mexc_base_url), llm or OllamaClient(s.ollama_url, s.ollama_model,
-                  s.ollama_timeout), predictor, risk_cfg)
+                  s.ollama_timeout), predictor, risk_cfg, strategy=estrategia)
     stop_event = asyncio.Event()
 
     async def loop() -> None:
@@ -128,6 +135,7 @@ def create_app(settings: Settings | None = None, *, mexc: MexcClient | None = No
                                                        "hidden": predictor.h,
                                                        "device_entrenamiento": predictor.card["training"]["device"]},
             "llm": {"model": s.ollama_model, "url": s.ollama_url},
+            "strategy": {"version": agent.strategy.get("version"), "regla": agent.regla},
             "replay_progress": store.kv_get("replay_progress"),
         }
 

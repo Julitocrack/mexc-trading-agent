@@ -127,3 +127,39 @@ def test_replay_y_metricas(settings, predictor):
     m = run_metrics(ag.store, out["runs"]["buy_hold"], ag.risk_cfg)
     assert m["ciclos"] == out["candles"] and m["compras"] == 1
     assert ag.store.decisions(LIVE) == []          # el replay está separado del modo en vivo
+
+
+# ---------------------------------------------------------------- estrategia con filtro de tendencia (cap. 11)
+def _agente_con_regla(settings, predictor, velas, regla):
+    from app.agent import Agent
+    from app.store import Store
+    return Agent(settings, Store(settings.db_path), FakeMexc(velas), FakeLLM(), predictor, RiskConfig(),
+                 clock=lambda: NOW, strategy={"version": "prueba", "regla": regla})
+
+
+def test_filtro_de_tendencia_bloquea_la_compra_bajo_la_sma(settings, predictor):
+    import numpy as np
+    velas = make_candles(80)
+    velas["close"] = np.linspace(80000, 60000, 80)          # tendencia bajista: precio < SMA50
+    ag = _agente_con_regla(settings, predictor, velas, {"delta": 0.0, "sma": 50, "vol_umbral": None})
+    snap = ag.snapshot(velas, NOW, 48)
+    comprar, motivos = ag.senal(snap)
+    assert not comprar and any("SMA50" in m and "≤" in m for m in motivos)
+    assert ag.propose("model_only", snap, {"cash": 50000.0, "qty": 0.0, "avg_price": 0.0})["proposed_action"] == "HOLD"
+
+
+def test_filtro_de_tendencia_permite_la_compra_sobre_la_sma(settings, predictor):
+    import numpy as np
+    velas = make_candles(80)
+    velas["close"] = np.linspace(60000, 80000, 80)          # tendencia alcista: precio > SMA50
+    ag = _agente_con_regla(settings, predictor, velas, {"delta": None, "sma": 50, "vol_umbral": None})
+    snap = ag.snapshot(velas, NOW, 48)
+    assert ag.senal(snap)[0] is True
+    assert ag.propose("model_only", snap, {"cash": 50000.0, "qty": 0.0, "avg_price": 0.0})["proposed_action"] == "BUY"
+
+
+def test_sma_sin_historia_suficiente_se_rechaza(settings, predictor):
+    velas = make_candles(30)
+    ag = _agente_con_regla(settings, predictor, velas, {"delta": 0.001, "sma": 50, "vol_umbral": None})
+    with pytest.raises(CandleValidationError, match="SMA50"):
+        ag.snapshot(velas, NOW, 48)

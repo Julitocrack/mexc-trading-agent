@@ -14,6 +14,9 @@ tests/test_controles.py::test_vela_abierta_no_se_usa PASSED
 tests/test_controles.py::test_ventana_insuficiente_y_desorden PASSED
 tests/test_controles.py::test_no_existe_ruta_de_ordenes_reales PASSED
 tests/test_controles.py::test_replay_y_metricas PASSED
+tests/test_controles.py::test_filtro_de_tendencia_bloquea_la_compra_bajo_la_sma PASSED
+tests/test_controles.py::test_filtro_de_tendencia_permite_la_compra_sobre_la_sma PASSED
+tests/test_controles.py::test_sma_sin_historia_suficiente_se_rechaza PASSED
 tests/test_errores.py::test_1_mexc_rate_limit_reintenta_con_espera_creciente PASSED
 tests/test_errores.py::test_1_mexc_sin_respuesta_pausa_al_agente PASSED
 tests/test_errores.py::test_2_dato_atrasado_no_opera PASSED
@@ -25,4 +28,4 @@ tests/test_errores.py::test_6_saldo_insuficiente PASSED
 tests/test_errores.py::test_7_vela_duplicada_no_se_procesa_dos_veces PASSED
 tests/test_errores.py::test_8_reinicio_recupera_estado_sin_duplicar PASSED
 tests/test_errores.py::test_9_detener_bloquea_ordenes_y_conserva_posicion PASSED
-======================== 27 passed, 1 warning in 1.45s =========================
+======================== 30 passed, 1 warning in 1.45s =========================

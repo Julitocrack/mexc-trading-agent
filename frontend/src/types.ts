@@ -1,6 +1,7 @@
 export type AgentStatus = 'STOPPED' | 'RUNNING' | 'PAUSED' | 'HALTED'
 
 export interface Indicators {
+  [key: string]: number | null
   sma20: number | null
   dist_sma20: number | null
   vol20: number | null
@@ -68,6 +69,7 @@ export interface Status {
   risk: RiskConfig
   model: { version: string; type: string; hidden: number; device_entrenamiento: string }
   llm: { model: string; url: string }
+  strategy: { version: string; regla: { delta: number | null; sma: number | null; vol_umbral: number | null } }
   replay_progress: { tag: string; done: number; total: number; candle: string } | null
 }
 

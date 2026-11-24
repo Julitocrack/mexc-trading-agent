@@ -1,4 +1,4 @@
-# MEXC Paper Trading Agent · v1.0.2
+# MEXC Paper Trading Agent · v1.1.0
 
 Agente de trading **en modo Paper (dinero simulado)** para **BTCUSDT** que combina:
 
@@ -17,7 +17,7 @@ Agente de trading **en modo Paper (dinero simulado)** para **BTCUSDT** que combi
 
 | Componente | Tecnología | Versión |
 |---|---|---|
-| Aplicación | MEXC Paper Trading Agent | **1.0.2** |
+| Aplicación | MEXC Paper Trading Agent | **1.1.0** |
 | Modelo predictivo | LSTM (PyTorch), artefacto `btcusdt-lstm-1.0.0` **entrenado en NVIDIA Tesla T4 (Google Colab)** | torch 2.14.1+cu130 (entrenamiento) · 2.15.0 (inferencia local) |
 | LLM local | Ollama + `qwen2.5:3b` (3.1B parámetros, Q4_K_M, 1.9 GB) | Ollama 0.40.16 |
 | Backend | Python + FastAPI + Uvicorn | Python 3.14 · FastAPI 0.163.2 · Uvicorn 0.54.0 |
@@ -104,7 +104,7 @@ Para la **evidencia de T4** ejecuten `backend/training/train_colab.ipynb` en Goo
 ### Pruebas automatizadas
 
 ```bash
-cd backend && .venv/bin/python -m pytest -v    # 27 pruebas
+cd backend && .venv/bin/python -m pytest -v    # 30 pruebas
 ```
 
 ### Evaluación (sin LLM vs con LLM vs comprar y mantener)
@@ -202,27 +202,39 @@ La ficha completa está en `backend/models/model_card.json`: arquitectura, hiper
 | Reinicio del backend | Portafolio y velas procesadas se recuperan de SQLite; si estaba en ejecución, vuelve en **PAUSA**; no se duplican operaciones | `test_8_*` |
 | Botón de detención | Bloquea nuevas órdenes, conserva y muestra la posición; liquidar es otra acción | `test_9_*` |
 
-La salida de las 27 pruebas está en [`docs/evidencia/pruebas_pytest.txt`](docs/evidencia/pruebas_pytest.txt). La demostración **en vivo** contra el backend real (clave incorrecta, vela duplicada, Ollama detenido y recuperado, botón de detención, límites protegidos y reinicio del backend) está en [`docs/evidencia/demo_errores_en_vivo.txt`](docs/evidencia/demo_errores_en_vivo.txt) y se repite con `scripts/demo_errores.py`. Captura de la UI en un ciclo real: [`docs/evidencia/ui_ciclo_en_vivo.jpg`](docs/evidencia/ui_ciclo_en_vivo.jpg). Los datos externos se tratan como datos y nunca como instrucciones: el prompt lo indica y la validación rechaza cualquier acción, símbolo o fecha fuera de lo permitido.
+La salida de las 30 pruebas está en [`docs/evidencia/pruebas_pytest.txt`](docs/evidencia/pruebas_pytest.txt). La demostración **en vivo** contra el backend real (clave incorrecta, vela duplicada, Ollama detenido y recuperado, botón de detención, límites protegidos y reinicio del backend) está en [`docs/evidencia/demo_errores_en_vivo.txt`](docs/evidencia/demo_errores_en_vivo.txt) y se repite con `scripts/demo_errores.py`. Captura de la UI en un ciclo real: [`docs/evidencia/ui_ciclo_en_vivo.jpg`](docs/evidencia/ui_ciclo_en_vivo.jpg). Los datos externos se tratan como datos y nunca como instrucciones: el prompt lo indica y la validación rechaza cualquier acción, símbolo o fecha fuera de lo permitido.
+
+---
+
+## Estrategia de señal 1.1.0 (indicadores técnicos, capítulo 11)
+
+El agente está comprado solo si **el pronóstico LSTM supera δ = 0.10% y el precio cierra arriba de su promedio de 50 días (SMA50)**; si no, permanece en efectivo. El filtro de tendencia evita estar comprado cuando el mercado cae.
+
+- **Familia predefinida:** 45 combinaciones de pronóstico > δ (sin filtro, 0.05%, 0.10%), filtro de tendencia (sin filtro, SMA20, 50, 100 o 200) y filtro de volatilidad (sin filtro, percentil 70 u 85).
+- **Selección sin TE:** bloques anuales de 2019 al final de VA (2025-07-20), que incluyen años alcistas y bajistas; gana la mayor mediana del Sharpe anualizado entre bloques. Script: `backend/training/select_strategy.py`; resultado versionado en `backend/models/strategy_card.json`.
+- **Declaración (protocolo, sección 3):** el periodo TE se consultó en un análisis exploratorio el 2026-11-24, antes de esta selección. Por eso sus resultados se reportan como **"TE consultado"** y el **periodo independiente nuevo** es el posterior al 2026-11-16: la operación Paper en vivo.
+- Advertencia: en los bloques 2019 a 2024-03 el pronóstico LSTM es dentro de muestra (están en TR).
 
 ---
 
 ## Evaluación
 
-**Replay** con velas históricas de MEXC, identificado como tal y separado del modo en vivo, sobre el periodo de prueba independiente (TE) del modelo: **2025-07-21 → 2026-11-15, 482 ciclos de decisión por estrategia**. Las tres estrategias usan el mismo periodo, los mismos costos (comisión 0.0% y deslizamiento de 5 pb) y 50,000 USDT iniciales. La decisión se toma al cierre de t, la ejecución es a la apertura de t+1 y al final se liquida al último cierre con costos.
+**Replay** con velas históricas de MEXC, identificado como tal y separado del modo en vivo: **2025-07-21 → 2026-11-15, 482 ciclos de decisión por estrategia** (periodo TE, ya consultado). Las estrategias usan el mismo periodo, los mismos costos (comisión 0.0% y deslizamiento de 5 pb) y 50,000 USDT iniciales. Se decide al cierre de t, se ejecuta en la apertura de t+1 y al final se liquida con costos.
 
-| Estrategia | Rend. neto | Máx. drawdown | Compras / ventas | Win Rate | Costos (USDT) | Acciones rechazadas | Latencia LLM |
+| Estrategia | Rend. neto | Máx. drawdown | Compras / ventas | Win Rate | Costos (USDT) | Rechazadas | Latencia LLM |
 |---|---|---|---|---|---|---|---|
-| Agente con LLM local (`qwen2.5:3b`) | **−38.45%** | −47.51% | 8 / 8 | 12.5% | 286.71 | 0 | mediana 3.9 s · p95 5.1 s |
-| Modelo sin LLM (regla δ = 0.10%) | **−38.45%** | −47.51% | 8 / 8 | 12.5% | 286.71 | 0 | — |
-| Comprar y mantener | **−42.55%** | −50.46% | 1 / 0 | no definido (sin operaciones cerradas) | 23.74 | 0 | — |
+| **Agente con LLM, estrategia 1.1.0** (δ y SMA50) | **+2.93%** | −23.73% | 16 / 16 | 12.5% | 671.90 | 0 | media 4.3 s |
+| Modelo sin LLM, estrategia 1.1.0 | **+2.93%** | −23.73% | 16 / 16 | 12.5% | 671.90 | 0 | — |
+| Agente con LLM, regla 1.0 (solo δ) | −38.45% | −47.51% | 8 / 8 | 12.5% | 286.71 | 0 | mediana 3.9 s |
+| Comprar y mantener | **−42.55%** | −50.46% | 1 / 0 | no definido | 23.74 | 0 | — |
 
 **Interpretación:**
-- Modelo evaluado: el artefacto **entrenado en la T4** (LSTM h=32).
-- BTC cayó con fuerza en el periodo de prueba. Las estrategias activas perdieron menos que comprar y mantener (−38.5% contra −42.6%) y tuvieron un drawdown algo menor (−47.5% contra −50.5%), pero **ninguna tuvo rentabilidad positiva**. Con este modelo, la regla casi siempre estuvo invertida: hizo solo 8 operaciones cerradas y ganó 1 de 8.
-- **El LLM no aportó valor medible:** en las 482 velas eligió la misma acción que la regla del modelo (0 diferencias), no usó herramientas y no tuvo propuestas rechazadas. En la práctica actuó como un "traductor" de la señal LSTM, con justificación en lenguaje natural, a cambio de unos 3.9 s de latencia por decisión.
-- El protocolo pide evaluar si el LLM aporta valor y no exige que lo mejore. Este resultado indica que, con este modelo predictivo, la ventaja tendría que venir de mejores variables o de un LLM con información adicional, no del LLM por sí solo.
+- BTC cayó 42.6% en el periodo. Con el filtro de tendencia, el agente terminó en **+2.9%** (45 puntos mejor que comprar y mantener) y con **la mitad del drawdown** (−23.7% contra −50.5%), porque pasó a efectivo durante las caídas.
+- **No es un +20% absoluto.** Un agente que solo compra (sin cortos, como pide el protocolo) no puede ganar 20% cuando el mercado cae 45%; su valor está en proteger el capital. En años alcistas de la validación (2019 a 2025) la misma regla ganó entre +19% y +291% por año, con una pérdida en 2022 (−51%).
+- **El LLM sigue sin aportar valor medible:** 0 decisiones distintas a la regla en 482 velas y 0 rechazos. Funciona como traductor de la señal a lenguaje natural, con unos 4 s de latencia.
+- La evaluación anterior (regla 1.0) está en [`docs/evaluacion_v1/`](docs/evaluacion_v1/EVALUACION.md).
 
-Archivos: [`docs/evaluacion/EVALUACION.md`](docs/evaluacion/EVALUACION.md), `resultados.csv`, y `decisiones_*.csv` / `ordenes_*.csv` por estrategia (cada decisión incluye la justificación del LLM y su latencia).
+Archivos: [`docs/evaluacion/EVALUACION.md`](docs/evaluacion/EVALUACION.md), `resultados.csv`, y `decisiones_*.csv` / `ordenes_*.csv` por estrategia.
 
 ---
 
@@ -237,8 +249,8 @@ Archivos: [`docs/evaluacion/EVALUACION.md`](docs/evaluacion/EVALUACION.md), `res
 6. Revisen la **bitácora de eventos** en la UI después de cada pausa automática antes de reanudar.
 
 **Para mejorar el modelo y el agente**
-1. **Mejores variables:** el capítulo 11 sugiere agregar indicadores (distancia a SMA20, volatilidad) como entradas y comparar con VA. Con solo 20 rezagos casi no hay señal aprovechable.
-2. **Validación en varias ventanas** (capítulo 9): ventanas expansivas para comprobar que δ no dependa de un único periodo favorable.
+1. **Indicadores como entradas del modelo:** la versión 1.1.0 usa la tendencia como filtro de la señal; el siguiente paso es darle esos indicadores a la propia LSTM y compararlo con VA.
+2. **Seguir midiendo en el periodo nuevo:** la operación Paper en vivo desde el 2026-11-24 es la prueba realmente independiente de la estrategia 1.1.0.
 3. **Probar un LLM más grande** (`qwen2.5:7b`): mejora las justificaciones a cambio de más latencia. Comparen la tasa de rechazos y la latencia con la misma evaluación.
 4. **Siguiente paso del protocolo:** convertir el simulador en un entorno y entrenar DQN/DDQN con una política de referencia, evaluando con datos nuevos.
 
@@ -246,7 +258,9 @@ Archivos: [`docs/evaluacion/EVALUACION.md`](docs/evaluacion/EVALUACION.md), `res
 
 ## Limitaciones conocidas
 
-- La LSTM no supera de forma robusta al pronóstico cero (ver sección *Modelo predictivo*); la evaluación lo reporta tal cual.
+- La LSTM no supera de forma robusta al pronóstico cero (ver sección *Modelo predictivo*); la mejora de la 1.1.0 viene del filtro de tendencia.
+- El periodo TE se consultó antes de elegir la estrategia 1.1.0 (declarado); la prueba limpia es la operación en vivo posterior al 2026-11-16.
+- Un agente sin ventas en corto no puede obtener rendimientos positivos altos cuando el mercado cae con fuerza.
 - Con frecuencia diaria, 20 ciclos en vivo tardan 20 días. Los ciclos de la evaluación son de **replay** y están identificados como tales, separados del modo en vivo.
 - Un LLM de 3B parámetros a veces simplifica su justificación. La decisión final siempre pasa por la validación y por el motor de riesgo.
 
@@ -257,9 +271,9 @@ Archivos: [`docs/evaluacion/EVALUACION.md`](docs/evaluacion/EVALUACION.md), `res
 ```
 backend/
   app/            config · mexc · features · model · llm · risk · paper · store · agent · main
-  training/       train.py (entrenamiento versionado) · train_colab.ipynb (evidencia T4)
-  models/         model.pt · scaler.joblib · model_card.json · curvas.csv
-  tests/          27 pruebas (errores del protocolo y controles)
+  training/       train.py · select_strategy.py · train_colab.ipynb (evidencia T4)
+  models/         model.pt · scaler.joblib · model_card.json · strategy_card.json · curvas.csv
+  tests/          30 pruebas (errores del protocolo, controles y estrategia)
   .env.example    configuración sin secretos
 frontend/         Vue 3 + Vite + TypeScript (src/App.vue, components/, api.ts)
 scripts/          run_backend.sh · run_frontend.sh · evaluate.py
@@ -270,7 +284,8 @@ docs/             evaluacion/ (resultados y decisiones) · evidencia/
 
 | Versión | Cambios |
 |---|---|
-| **1.0.2** | La UI valora la posición con el último precio conocido (el de la ejecución del ciclo) y ya no con el cierre de la vela anterior; el backend acepta otro puerto (`PORT=8001 ./scripts/run_backend.sh`); la prueba del botón de detención ya no depende de la fecha. |
+| **1.1.0** | Estrategia de señal 1.1.0: pronóstico LSTM > δ **y** precio > SMA50, seleccionada por bloques anuales 2019 → VA (`select_strategy.py`, `strategy_card.json`); declaración de TE consultado; UI con la señal completa y la distancia a la SMA50; 3 pruebas nuevas (30 en total); evaluación repetida: +2.93% contra −42.55% de comprar y mantener. |
+| 1.0.2 | La UI valora la posición con el último precio conocido (el de la ejecución del ciclo) y ya no con el cierre de la vela anterior; el backend acepta otro puerto (`PORT=8001 ./scripts/run_backend.sh`); la prueba del botón de detención ya no depende de la fecha. |
 | 1.0.1 | Modelo reentrenado en **NVIDIA Tesla T4 (Google Colab)** con `train_colab.ipynb` (LSTM h=32) y CSV de entrenamiento con huella verificada; el escalador se valida numéricamente al cargarse con otra versión de scikit-learn; evaluación de las tres estrategias repetida con el modelo de la T4. |
 | 1.0.0 | Primera entrega: backend FastAPI autenticado, LLM local con Ollama, motor de riesgo, simulador Paper, UI Vue 3 + Vite + TypeScript, 27 pruebas y evaluación por replay. |
 

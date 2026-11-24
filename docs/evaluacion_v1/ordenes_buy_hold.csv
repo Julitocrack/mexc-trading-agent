@@ -1,0 +1,2 @@
+id,run_id,decision_id,candle_time,side,qty,ref_price,price,notional,fee,slippage_cost,realized_pnl,ts
+3,replay-20261117T224729-buy_hold,3,2025-07-21,BUY,0.40446499999999996,117380.37,117439.060185,47499.98947772602,0.0,23.738125676024787,,2026-11-17T22:47:36+00:00

@@ -24,6 +24,19 @@ let timer: number | undefined
 const s = computed(() => status.value)
 const agentStatus = computed(() => s.value?.agent.status ?? 'STOPPED')
 const last = computed(() => s.value?.last_decision ?? null)
+const sma = computed(() => s.value?.strategy?.regla.sma ?? null)
+const trendUp = computed(() => {
+  const d = s.value?.data
+  if (!d || !sma.value) return true
+  const dist = d.indicators[`dist_sma${sma.value}`]
+  return dist !== null && dist !== undefined && dist > 0
+})
+const signalBuy = computed(() => {
+  const d = s.value?.data
+  if (!d) return false
+  const delta = s.value?.strategy?.regla.delta
+  return (delta === null || delta === undefined || d.forecast > delta) && trendUp.value
+})
 
 function notify(kind: 'ok' | 'error', text: string) {
   message.value = { kind, text }
@@ -101,7 +114,7 @@ onUnmounted(() => window.clearInterval(timer))
       <div>
         <h1>{{ s.symbol }} · Agente Paper</h1>
         <div class="small muted">
-          v{{ s.version }} · modelo {{ s.model.version }} ({{ s.model.type }} h={{ s.model.hidden }}) · LLM local {{ s.llm.model }}
+          v{{ s.version }} · modelo {{ s.model.version }} ({{ s.model.type }} h={{ s.model.hidden }}) · {{ s.strategy?.version }} · LLM local {{ s.llm.model }}
         </div>
       </div>
       <div class="head-right">
@@ -133,10 +146,12 @@ onUnmounted(() => window.clearInterval(timer))
       <div class="panel card">
         <div class="label">Pronóstico siguiente vela</div>
         <div class="big">{{ pct(s.data?.forecast, 3) }}</div>
-        <div class="small muted">Umbral δ {{ pct(s.risk.signal_threshold, 3) }} · señal {{ s.data && s.data.forecast > s.risk.signal_threshold ? 'comprar/mantener' : 'efectivo' }}</div>
+        <div class="small muted">Umbral δ {{ pct(s.risk.signal_threshold, 3) }}<template v-if="sma"> · precio {{ trendUp ? '>' : '≤' }} SMA{{ sma }}</template></div>
+        <div class="small">Señal de la estrategia: <b :class="signalBuy ? 'act-BUY' : 'act-HOLD'">{{ s.data ? (signalBuy ? 'comprar/mantener' : 'efectivo') : '—' }}</b></div>
       </div>
       <div class="panel card">
         <div class="label">Indicadores</div>
+        <div v-if="sma" class="small">Distancia SMA{{ sma }} (tendencia): <b>{{ pct(s.data?.indicators[`dist_sma${sma}`]) }}</b></div>
         <div class="small">Distancia SMA20: <b>{{ pct(s.data?.indicators.dist_sma20) }}</b></div>
         <div class="small">Volatilidad 20: <b>{{ pct(s.data?.indicators.vol20) }}</b></div>
         <div class="small">RSI 14: <b>{{ num(s.data?.indicators.rsi14, 1) }}</b></div>
