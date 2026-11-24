@@ -139,7 +139,13 @@ def test_8_reinicio_recupera_estado_sin_duplicar(settings, predictor):
 
 # 9 ─ Botón de detención ──────────────────────────────────────────────────────────────────────────────
 def test_9_detener_bloquea_ordenes_y_conserva_posicion(settings, predictor):
-    app = create_app(settings, mexc=FakeMexc(), llm=FakeLLM("BUY"), predictor=predictor, start_loop=False)
+    # create_app usa el reloj real: las velas deben terminar ayer (UTC) para no caer en "dato atrasado"
+    from datetime import datetime, timedelta, timezone
+    ayer = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+    velas = make_candles(last_date=ayer)
+    mexc = FakeMexc(velas)
+    mexc.closed_klines = lambda symbol, interval, limit=120, now=None: velas.tail(limit).reset_index(drop=True)
+    app = create_app(settings, mexc=mexc, llm=FakeLLM("BUY"), predictor=predictor, start_loop=False)
     h = {"X-API-Key": TEST_KEY}
     with TestClient(app) as c:
         assert c.post("/api/agent/stop", headers=h).json()["status"] == "STOPPED"

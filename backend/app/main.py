@@ -111,7 +111,10 @@ def create_app(settings: Settings | None = None, *, mexc: MexcClient | None = No
     def status():
         p = store.portfolio(LIVE)
         snap = store.kv_get("last_snapshot")
-        precio = snap["close"] if snap else None
+        # Valoración con el último precio conocido: el de la última ejecución/valoración del ciclo (ticker),
+        # que es más reciente que el cierre de la vela; si aún no hay ciclos, el cierre de la vela.
+        ult_eq = store.last_equity(LIVE)
+        precio = ult_eq["price"] if ult_eq else (snap["close"] if snap else None)
         ult = store.decisions(LIVE, 1)
         return {
             "version": __version__, "symbol": s.symbol, "interval": s.interval, "mode": "PAPER",

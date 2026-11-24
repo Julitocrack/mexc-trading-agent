@@ -1,4 +1,4 @@
-# MEXC Paper Trading Agent · v1.0.1
+# MEXC Paper Trading Agent · v1.0.2
 
 Agente de trading **en modo Paper (dinero simulado)** para **BTCUSDT** que combina:
 
@@ -17,7 +17,7 @@ Agente de trading **en modo Paper (dinero simulado)** para **BTCUSDT** que combi
 
 | Componente | Tecnología | Versión |
 |---|---|---|
-| Aplicación | MEXC Paper Trading Agent | **1.0.1** |
+| Aplicación | MEXC Paper Trading Agent | **1.0.2** |
 | Modelo predictivo | LSTM (PyTorch), artefacto `btcusdt-lstm-1.0.0` **entrenado en NVIDIA Tesla T4 (Google Colab)** | torch 2.14.1+cu130 (entrenamiento) · 2.15.0 (inferencia local) |
 | LLM local | Ollama + `qwen2.5:3b` (3.1B parámetros, Q4_K_M, 1.9 GB) | Ollama 0.40.16 |
 | Backend | Python + FastAPI + Uvicorn | Python 3.14 · FastAPI 0.163.2 · Uvicorn 0.54.0 |
@@ -83,6 +83,8 @@ cp .env.example .env
 python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 cd ..
 ./scripts/run_backend.sh       # http://127.0.0.1:8000  (documentación: /docs)
+# Si el puerto 8000 está ocupado: PORT=8001 ./scripts/run_backend.sh
+# y en la UI: BACKEND_URL=http://127.0.0.1:8001 ./scripts/run_frontend.sh
 
 # 3) UI (otra terminal)
 ./scripts/run_frontend.sh      # http://127.0.0.1:5173
@@ -268,7 +270,8 @@ docs/             evaluacion/ (resultados y decisiones) · evidencia/
 
 | Versión | Cambios |
 |---|---|
-| **1.0.1** | Modelo reentrenado en **NVIDIA Tesla T4 (Google Colab)** con `train_colab.ipynb` (LSTM h=32) y CSV de entrenamiento con huella verificada; el escalador se valida numéricamente al cargarse con otra versión de scikit-learn; evaluación de las tres estrategias repetida con el modelo de la T4. |
+| **1.0.2** | La UI valora la posición con el último precio conocido (el de la ejecución del ciclo) y ya no con el cierre de la vela anterior; el backend acepta otro puerto (`PORT=8001 ./scripts/run_backend.sh`); la prueba del botón de detención ya no depende de la fecha. |
+| 1.0.1 | Modelo reentrenado en **NVIDIA Tesla T4 (Google Colab)** con `train_colab.ipynb` (LSTM h=32) y CSV de entrenamiento con huella verificada; el escalador se valida numéricamente al cargarse con otra versión de scikit-learn; evaluación de las tres estrategias repetida con el modelo de la T4. |
 | 1.0.0 | Primera entrega: backend FastAPI autenticado, LLM local con Ollama, motor de riesgo, simulador Paper, UI Vue 3 + Vite + TypeScript, 27 pruebas y evaluación por replay. |
 
 ## Licencia

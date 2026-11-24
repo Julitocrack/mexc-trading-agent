@@ -25,4 +25,4 @@ tests/test_errores.py::test_6_saldo_insuficiente PASSED
 tests/test_errores.py::test_7_vela_duplicada_no_se_procesa_dos_veces PASSED
 tests/test_errores.py::test_8_reinicio_recupera_estado_sin_duplicar PASSED
 tests/test_errores.py::test_9_detener_bloquea_ordenes_y_conserva_posicion PASSED
-======================== 27 passed, 1 warning in 0.92s =========================
+======================== 27 passed, 1 warning in 1.45s =========================
